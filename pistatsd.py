@@ -1,4 +1,5 @@
-
+import json
+import argparse
 import pika
 import pika.exceptions
 import signal
@@ -10,6 +11,7 @@ publish_stats = True
 
 
 def stop_stats_service(signal, frame):
+    global publish_stats
     """
     A signal handler, that will cause the main execution loop to stop
 
@@ -29,7 +31,7 @@ def read_cpu_utilization():
                     their respective names
     """
     with open('/proc/uptime') as uptime:
-        return [int(x) for x in uptime.readline().split()]
+        return [float(x) for x in uptime.readline().split()]
 
 
 def read_net_throughput():
@@ -74,16 +76,38 @@ try:
 
 
     # TODO: Parse the command line arguments
-    credentials = credentials.split(':')
+    parser = argparse.ArgumentParser(description='Read JSON utilization stats from \
+    a RabbitMQ message broker and print them in human-readable form.')
+
+    parser.add_argument('-b', dest='broker', nargs=1, required=True, help='RabbitMQ\
+    message broker')
+
+    parser.add_argument('-p', dest='virtualhost', nargs=1, required=False,
+                        default=['/'], help='Virtual host to connect to')
+    parser.add_argument('-c', dest='credentials', nargs=1, required=False,
+                        default=['guest:guest'], help='user:password')
+    parser.add_argument('-k', dest='key', nargs=1, required=True,
+                        help='Routing key')
+
+    args = parser.parse_args()
+
+    def args_to_pikaargs(args):
+        # Make sure the credentials are formatted correctly
+        if ":" not in args.credentials[0]:
+            print('Credentials are not formatted correctly. Exiting.')
+            sys.exit(1)
+
+        cred_list = args.credentials[0].split(':')
+        credentials = pika.PlainCredentials(cred_list[0], cred_list[1])
+        broker = args.broker[0]
+        vhost = args.virtualhost[0]
+
+        pika_params = pika.ConnectionParameters(broker, 5672, vhost, credentials)
+
+        return pika_params
+
 
     # Ensure that the user specified the required arguments
-    if host is None:
-        print "You must specify a message broker to connect to"
-        sys.exit()
-
-    if topic is None:
-        print "You must specify a topic to subscribe to"
-        sys.exit()
 
     message_broker = None
     channel = None
@@ -91,7 +115,7 @@ try:
         # DONE: Connect to the message broker using the given broker address (host)
         # Use the virtual host (vhost) and credential information (credentials),
         # if provided
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, virtual_host=vhost, credentials=pika.credentials.PlainCredentials(credentials[1], credentials[1]))
+        connection = pika.BlockingConnection(args_to_pikaargs(args))
 
         # DONE: Setup the channel and exchange
         channel = connection.channel()
@@ -139,7 +163,8 @@ try:
 
             # TODO: Publish the message (utilization_msg) in JSON format to the
             #       broker under the user specified topic.
-            channel.basic_publish(exchange='direct_logs', routing_key=rkey, body=json.dumps(utilization_msg))
+            print utilization_msg
+            channel.basic_publish(exchange="pi_utilization", routing_key=args.key[0], body=json.dumps(utilization_msg))
 
             # Save the current stats as the last stats
             last_stat_sample = current_stat_sample
@@ -167,4 +192,6 @@ try:
             message_broker.close()
 
 except Exception, ee:
-    # Add code here to handle the exception, print an error, and exit gracefully
+    print(ee.message)
+    sys.exit()
+
