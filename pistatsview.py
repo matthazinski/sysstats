@@ -253,12 +253,16 @@ msg_broker = pika.BlockingConnection(pika_params)
 print('Connected to message broker')
 
 # setup exchange
+# it appears the netapps server doesn't like fanout
 ch = msg_broker.channel()
-ch.exchange_declare(exchange='pi_utilization', type='fanout')
+ch.exchange_declare(exchange='pi_utilization', type='direct')
+#MJH ch.exchange_declare(exchange='pi_utilization', type='fanout')
 
 # Create exclusive queue for receiving messages
 my_queue = ch.queue_declare(exclusive=True)
-ch.queue_bind(exchange='pi_utilization', queue=my_queue.method.queue)
+#MJH for fanout: ch.queue_bind(exchange='pi_utilization', queue=my_queue.method.queue)
+#MJH for direct:
+ch.queue_bind(exchange='pi_utilization', queue=my_queue.method.queue, routing_key=args.key[0])
 
 ch.basic_consume(on_stat_msg, queue=my_queue.method.queue, no_ack=True)
 print('Ready.\n')
