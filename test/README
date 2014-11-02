@@ -1,0 +1,4 @@
+These are utilities for testing the system.
+
+pubtest2.py     Uses localhost and 'foobar' key
+pubdemo.py      Publishes to ECE4564 server sandbox.
