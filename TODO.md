@@ -10,7 +10,7 @@
 ### Report
 - system diagram that shows how the system functions from end to end (done)
 - You must provide a diagram that shows what happens when:
-  - Stats client connects to broker
+  - Stats client connects to broker (done)
   - Stats client disconnects to broker
 - Each diagram must be followed by a textual description that explains, in 
   detail, what is happening in the diagram. For connection events, be sure to 
