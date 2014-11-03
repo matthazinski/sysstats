@@ -5,6 +5,7 @@ import pika.exceptions
 import signal
 import sys
 import time
+import subprocess
 
 # Global variable that controls running the app
 publish_stats = True
@@ -31,7 +32,11 @@ def read_cpu_utilization():
                     their respective names
     """
     with open('/proc/uptime') as uptime:
-        return [float(x) for x in uptime.readline().split()]
+        upt = [float(x) for x in uptime.readline().split()]
+        cores = int(subprocess.check_output(["nproc"]))
+        print cores
+        upt[1] /= cores
+        return upt
 
 
 def read_net_throughput():
@@ -44,7 +49,9 @@ def read_net_throughput():
              bytes for the respective interface
     """
     with open("/proc/net/dev") as net_info:
-        return {key: value for (key, value) in [(interface[0][:-1], {'rx': int(interface[1]), 'tx': int(interface[9])}) for interface in [line.split() for line in net_info.readlines()[2:]]]}
+        return {key: value for (key, value) in 
+                [(interface[0][:-1], {'rx': int(interface[1]), 'tx': int(interface[9])}) for interface in 
+                    [line.split() for line in net_info.readlines()[2:]]]}
 
 # Application Entry Point
 # ^^^^^^^^^^^^^^^^^^^^^^^
@@ -149,7 +156,7 @@ try:
             utilization_msg = {"cpu": None, "net": dict()}
 
             # Calculate CPU utilization during the sleep_time
-            utilization_msg["cpu"] = 1 - ((current_stat_sample['cpu'][0] - last_stat_sample['cpu'][0])/(current_stat_sample['cpu'][1] - last_stat_sample['cpu'][1]))
+            utilization_msg["cpu"] = max([0.0, 1 - ((current_stat_sample['cpu'][1] - last_stat_sample['cpu'][1])/(current_stat_sample['cpu'][0] - last_stat_sample['cpu'][0]))])
 
             # Calculate the throughout for each installed network interface
             # -------------------------------------------------------------
