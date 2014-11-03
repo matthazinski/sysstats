@@ -8,7 +8,7 @@
   - Ensure dependencies are updated once server is finished
 
 ### Report
-- system diagram that shows how the system functions from end to end
+- system diagram that shows how the system functions from end to end (done)
 - You must provide a diagram that shows what happens when:
   - Stats client connects to broker
   - Stats client disconnects to broker
